@@ -1,5 +1,11 @@
 # x86_64-elf cross-compiler toolchain
 
+<div align="center">
+
+[![Docker Build & Push Multiarch](https://github.com/titanzero/gcc-x86_64-elf/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/titanzero/gcc-x86_64-elf/actions/workflows/docker-publish.yml)
+
+</div>
+
 A containerised x86_64-elf toolchain so the host machine stays clean.
 
 Docker image with a freestanding `x86_64-elf` GCC toolchain, intended for OS development. Includes binutils, GCC (C/C++), libgcc multilib variants for `-mno-red-zone`/`-mcmodel=kernel`, and NASM.
