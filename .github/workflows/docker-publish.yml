@@ -1,0 +1,120 @@
+name: Docker Build & Push Multiarch
+
+on:
+  push:
+    tags:
+      - 'gcc*-binutils*'
+  workflow_dispatch:
+    inputs:
+      gcc_version:
+        description: 'GCC version (es. 15.0.0)'
+        required: true
+      binutils_version:
+        description: 'Binutils version (es. 2.46.0)'
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      gcc_version:     ${{ steps.versions.outputs.gcc }}
+      binutils_version: ${{ steps.versions.outputs.binutils }}
+      image_tag:       ${{ steps.versions.outputs.tag }}
+
+    steps:
+      - name: Parse versions
+        id: versions
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            GCC="${{ github.event.inputs.gcc_version }}"
+            BINUTILS="${{ github.event.inputs.binutils_version }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            GCC=$(echo "$TAG"     | grep -oP '(?<=gcc)[\d.]+')
+            BINUTILS=$(echo "$TAG" | grep -oP '(?<=binutils)[\d.]+')
+          fi
+
+          echo "gcc=$GCC"           >> $GITHUB_OUTPUT
+          echo "binutils=$BINUTILS" >> $GITHUB_OUTPUT
+          echo "tag=gcc${GCC}-binutils${BINUTILS}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            arch: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm 
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push (per-arch)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image_tag }}-${{ matrix.arch }}
+          build-args: |
+            GCC_VERSION=${{ needs.prepare.outputs.gcc_version }}
+            BINUTILS_VERSION=${{ needs.prepare.outputs.binutils_version }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to:   type=gha,scope=${{ matrix.arch }},mode=max
+
+  merge:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multiarch manifest
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          TAG="${{ needs.prepare.outputs.image_tag }}"
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${TAG}" \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:${TAG}-amd64" \
+            "${IMAGE}:${TAG}-arm64"
+
+      - name: Inspect manifest
+        run: |
+          docker buildx imagetools inspect \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image_tag }}
