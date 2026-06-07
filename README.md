@@ -55,7 +55,7 @@ docker run -d --name cross \
   -v $(pwd):/osdev \
   -w /osdev \
   --entrypoint sleep \
-  x86_64-elf-cross infinity
+  ghcr.io/titanzero/gcc-x86_64-elf:latest infinity
 ```
 
 ```makefile
@@ -89,7 +89,7 @@ cross-start:
 	docker run -d --name $(CONTAINER) \
 	  -v $(PWD):/osdev -w /osdev \
 	  --entrypoint sleep \
-	  x86_64-elf-cross infinity
+	  ghcr.io/titanzero/gcc-x86_64-elf:latest infinity
 
 cross-stop:
 	docker rm -f $(CONTAINER)
