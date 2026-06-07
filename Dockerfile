@@ -107,6 +107,7 @@ RUN apt-get update && apt-get install -y \
     libmpfr6 \
     libmpc3 \
     libisl23 \
+    xorriso \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="${PREFIX}/bin:${PATH}"
