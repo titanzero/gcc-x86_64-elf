@@ -2,8 +2,8 @@
 # leaks into the final image except the compiled toolchain under $PREFIX.
 FROM ubuntu:26.04 AS builder
 
-ARG BINUTILS_VERSION=2.46.0
-ARG GCC_VERSION=16.1.0
+ARG BINUTILS_VERSION=2.47
+ARG GCC_VERSION=16.2.0
 ARG TARGET=x86_64-elf
 ARG PREFIX=/opt/cross
 # Keep JOBS=1 by default to avoid OOM on small builders; override with --build-arg
