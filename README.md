@@ -99,6 +99,6 @@ cross-stop:
 
 | Tool     | Version        |
 |----------|----------------|
-| binutils | 2.46.0         |
-| GCC      | 16.1.0         |
+| binutils | 2.47.0         |
+| GCC      | 16.2.0         |
 | NASM     | system package |
